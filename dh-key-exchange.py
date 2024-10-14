@@ -59,6 +59,9 @@ def main():
     print(alice_s)
     print(bob_s)
 
+    # TODO: have bob and alice exchange encrypted messages using their symmetric key (CBC encryption) (same IV)
+
+
 
 if __name__ == "__main__":
     main()
