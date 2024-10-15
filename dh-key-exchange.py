@@ -37,9 +37,13 @@ def main():
     q_int = int.from_bytes(q, byteorder='big')
     a_int = int.from_bytes(a, byteorder='big')
 
+    print("\nMallory intercepts YA and YB")
+
     # creating diffie_hellman objects for alice and bob with global public elements
     alice = DiffieHellman(q_int, a_int)
     bob = DiffieHellman(q_int, a_int)
+    # mallory enters
+    mallory = DiffieHellman(q_int, a_int)
 
     # generating alices private and public keys
     alice_private = alice.gen_random_private()
@@ -51,62 +55,93 @@ def main():
     bob_public = bob.gen_public(a_int, bob_private, q_int)
     print("bob public: ", bob_public)
 
+    # Simulate MITM attack
+    # -mallory tampers with the public key exchange
+    # -mallory intercepts and sends q_int to Bob instead of YA
+    alice_public = q_int
+    # mallory intercepts and sends q_int to Alice instead of YB
+    bob_public = q_int
+
     # alice uses bobs public key and her private key to generate the symmetric key
-    alice_s = alice.gen_public(bob_public, alice_private, q_int)
-    print("alice symmetric key: ", alice_s)
+    alice_sym = alice.gen_public(bob_public, alice_private, q_int)
+    print("alice symmetric key: ", alice_sym)
 
     # bob uses alices public key and his private to generate the symmetric key
-    bob_s = bob.gen_public(alice_public, bob_private, q_int)
-    print("bob symmetric key: ", bob_s)
+    bob_sym = bob.gen_public(alice_public, bob_private, q_int)
+    print("bob symmetric key: ", bob_sym)
 
     # generate SHA-256 hash object for alice using symmetric key (truncate to 16 bytes)
-    alice_s = SHA256.new(alice_s.to_bytes(128, byteorder='big')).digest()[:16]
+    alice_sym = SHA256.new(alice_sym.to_bytes(128, byteorder='big')).digest()[:16]
     # generate SHA-256 hash object for bob using symmetric key
-    bob_s = SHA256.new(bob_s.to_bytes(128, byteorder='big')).digest()[:16]
+    bob_sym = SHA256.new(bob_sym.to_bytes(128, byteorder='big')).digest()[:16]
 
     # check if bob and alices symmetric key are equal (they should be)
-    if alice_s == bob_s:
+    if alice_sym == bob_sym:
         print("their symmetric keys are equal!")
     else:
         print("their symmetric keys are NOT equal!")
-    print(alice_s)
-    print(bob_s)
+    print(alice_sym)
+    print(bob_sym)
+
+    # mallory can compute the shared secret as well
+    mallory_private = mallory.gen_random_private()  # Mallory's private key
+    mallory_public = q_int  # uses q_int because mallory knows bob and alice are using it for public keys
+    mallory_sym = mallory.gen_public(mallory_public, mallory_private, q_int)
+    mallory_sym = SHA256.new(mallory_sym.to_bytes(128, byteorder='big')).digest()[:16]
+    print(f"Mallory's symmetric key is {mallory_sym}")
 
     iv = get_random_bytes(16)
     print(f"iv is {iv.hex()}")
 
-    alice_encr = alice_encryption(alice_s, iv)
+    alice_encr = alice_encrypt(alice_sym, iv)
     print(f"alice's encrypted message is {alice_encr}")
 
-    bob_decr = bob_decryption(bob_s, iv, alice_encr)
+    mallory_decr = mallory_decrypt(mallory_sym, iv, alice_encr)
+    print(f"Mallory decrypted Alice's message is {mallory_decr}")
+
+    bob_decr = bob_decrypt(bob_sym, iv, alice_encr)
     print(f"bobs's decrypted message is {bob_decr}")
 
 
-def alice_encryption(alice_s, iv):
+def alice_encrypt(alice_s, iv):
     # generate a cipher for alice
     alice_cipher = AES.new(alice_s, AES.MODE_CBC, iv)
-    plaintext = b'very secret info do not allow anyone to see thus'
+    plaintext = b'very secret info do not allow anyone to see this'  # lol its 48 exactly I did that on accident
     print(f"alice's original message is {plaintext}")
 
     # add padding to plaintext
-    plaintext = plaintext + (16 - len(plaintext) % 16) * b' '  # Padding
+    plaintext = add_padding(plaintext)
     return alice_cipher.encrypt(plaintext)
 
 
-def bob_decryption(bob_s, iv, alice_encr):
+def bob_decrypt(bob_s, iv, alice_encr):
     # generate a cipher for bob using the same iv
     bob_cipher = AES.new(bob_s, AES.MODE_CBC, iv)
-    return bob_cipher.decrypt(alice_encr).strip()
+    return bob_cipher.decrypt(alice_encr)
+
+
+def mallory_decrypt(mallory_s, iv, alices_encr_message):
+    # mallory decrypts alice's message using her symmetric key
+    mallory_cipher = AES.new(mallory_s, AES.MODE_CBC, iv)
+    return mallory_cipher.decrypt(alices_encr_message)
 
 
 # function that adds padding when a byte array isn't equally dividable into chunks of 16 bytes
-def add_padding(content, file_size):
+def add_padding(content):
     padding = b""
-    if file_size % 16 != 0:
-        padding_size = 16 - file_size % 16
+    if len(content) % 16 != 0:
+        padding_size = 16 - len(content) % 16
         print(f"padding_size is {padding_size}")
         padding = bytes([padding_size] * padding_size)
     return content + padding
+
+
+# padding remover based on how we pad in add_padding
+# TODO huh maybe not working
+def remove_padding(padded_data):
+    # the last byte indicates the padding length
+    padding_len = padded_data[-1]
+    return padded_data[:-padding_len]
 
 
 if __name__ == "__main__":
