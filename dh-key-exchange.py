@@ -135,13 +135,13 @@ def add_padding(content):
         padding = bytes([padding_size] * padding_size)
     return content + padding
 
-
 # padding remover based on how we pad in add_padding
-# TODO huh maybe not working
 def remove_padding(padded_data):
     # the last byte indicates the padding length
     padding_len = padded_data[-1]
-    return padded_data[:-padding_len]
+    if len(set(padded_data[-padding_len:])) == 1:
+        return padded_data[:-padding_len]
+    return padded_data
 
 
 if __name__ == "__main__":
