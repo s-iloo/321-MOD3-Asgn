@@ -15,7 +15,9 @@ def main():
     # select integer e
     e = 65537
     # calculate d: de % phi(n) = 1
-    d = 1 / (e % phi_n)
+    # d = int(1 / (e % phi_n))
+    d = number.inverse(e, phi_n)
+    print("d is: ", d)
     # public key (PU = {e, n})
     public = {e, n}
     # private key (PR = {d, n})
@@ -30,6 +32,19 @@ def main():
     print("my message in hex: ", message_int)
     if message_int < n: 
         print("message is less than n")
+    # generate ciphertext (C = M^e (mod n))
+    ciphertext = pow(message_int, e, n)
+    print("ciphertext: ", ciphertext)
+
+    # decrypt ciphertext (M = C^d (mod n))
+    plaintext_int = pow(ciphertext, d, n)
+    print("plaintext int: ", plaintext_int)
+
+    plaintext_hex = hex(plaintext_int)[2:]
+
+    plaintext_ascii_bytes = bytes.fromhex(plaintext_hex)
+    plaintext_ascii_string = plaintext_ascii_bytes.decode('ascii', errors='ignore')
+    print("plaintext string: ", plaintext_ascii_string)
 
     
 if __name__ == "__main__":
