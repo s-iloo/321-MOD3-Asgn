@@ -102,6 +102,67 @@ def main():
     bob_decr = bob_decrypt(bob_sym, iv, alice_encr)
     print(f"bobs's decrypted message is {bob_decr}")
 
+    # task 2 part 2
+    print("starting task 2...")
+    # mallory tampers with the alpha global public element and makes it 1
+    new_a = 1
+
+    # creating the DiffieHellman classes for alice and bob and mallory
+    alice = DiffieHellman(q_int, new_a)
+    bob = DiffieHellman(q_int, new_a)
+    mallory = DiffieHellman(q_int, new_a)
+
+
+    # alice generates her private and public integers 
+    alice_private = alice.gen_random_private()
+    alice_public = alice.gen_public(new_a, alice_private, q_int)
+    print("alice public: ", alice_public)
+
+    # bob generates her private and public integers
+    bob_private = bob.gen_random_private()
+    bob_public = bob.gen_public(new_a, bob_private, q_int)
+    print("bob public: ", bob_public)
+
+    # mallory can compute the shared secret as well
+    mallory_private = mallory.gen_random_private()  # Mallory's private key
+    # since mallory knows that 1 mod/power any number is always 1 she knows bobs and alices public 
+    # number that they're sending to each other must be 1
+    mallory_sym = 1
+    mallory_sym = SHA256.new(mallory_sym.to_bytes(128, byteorder='big')).digest()[:16]
+    print(f"Mallory's symmetric key is {mallory_sym}")
+
+    # alice uses bobs public key and her private key to generate the symmetric key
+    alice_sym = alice.gen_public(bob_public, alice_private, q_int)
+    print("alice symmetric key: ", alice_sym)
+
+    # bob uses alices public key and his private to generate the symmetric key
+    bob_sym = bob.gen_public(alice_public, bob_private, q_int)
+    print("bob symmetric key: ", bob_sym)
+
+    # generate SHA-256 hash object for alice using symmetric key (truncate to 16 bytes)
+    alice_sym = SHA256.new(alice_sym.to_bytes(128, byteorder='big')).digest()[:16]
+    # generate SHA-256 hash object for bob using symmetric key
+    bob_sym = SHA256.new(bob_sym.to_bytes(128, byteorder='big')).digest()[:16]
+
+    if mallory_sym == bob_sym:
+        print("mallory's symmetric key is equal to bobs!")
+    else: 
+        print("not equal")
+
+    iv = get_random_bytes(16)
+    print(f"iv is {iv.hex()}")
+
+    alice_encr = alice_encrypt(alice_sym, iv)
+    print(f"alice's encrypted message is {alice_encr}")
+
+    mallory_decr = mallory_decrypt(mallory_sym, iv, alice_encr)
+    print(f"Mallory decrypted Alice's message is {mallory_decr}")
+
+    bob_decr = bob_decrypt(bob_sym, iv, alice_encr)
+    print(f"bobs's decrypted message is {bob_decr}")
+
+
+
 
 def alice_encrypt(alice_s, iv):
     # generate a cipher for alice
