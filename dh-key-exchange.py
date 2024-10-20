@@ -62,6 +62,7 @@ def main():
     # mallory intercepts and sends q_int to Alice instead of YB
     bob_public = q_int
 
+    # TODO is this possibly confusing? Using generate public
     # alice uses bobs public key and her private key to generate the symmetric key
     alice_sym = alice.gen_public(bob_public, alice_private, q_int)
     print("alice symmetric key: ", alice_sym)

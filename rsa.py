@@ -1,4 +1,6 @@
 from Crypto.Util import number
+from Crypto.Random import get_random_bytes
+from Crypto.Cipher import AES
 
 
 def main():
@@ -23,15 +25,19 @@ def main():
     # private key (PR = {d, n})
     private = {d, n}
 
-    # ----- ENCRYPTION ----- 
-    message = "this is my private message!"
+    # ----- ENCRYPTION -----
+    message = get_random_bytes(16)
+    print(f"message {message}")
+
+    iv = get_random_bytes(16)
+
+    bob_cipher = AES.new(message, AES.MODE_CBC, iv)
     # message_hex = ''.join([hex(ord(char))[2:] for char in message])
-    message_ascii = message.encode('ascii')
-    message_hex = message_ascii.hex()
+    message_hex = message.hex()
     message_int = int(message_hex, 16)
     print("my message in hex: ", message_int)
-    if message_int < n: 
-        print("message is less than n")
+    assert message_int < n
+
     # generate ciphertext (C = M^e (mod n))
     ciphertext = pow(message_int, e, n)
     print("ciphertext: ", ciphertext)
@@ -41,11 +47,22 @@ def main():
     print("plaintext int: ", plaintext_int)
 
     plaintext_hex = hex(plaintext_int)[2:]
-
     plaintext_ascii_bytes = bytes.fromhex(plaintext_hex)
-    plaintext_ascii_string = plaintext_ascii_bytes.decode('ascii', errors='ignore')
-    print("plaintext string: ", plaintext_ascii_string)
 
-    
+    alice_ciper = AES.new(plaintext_ascii_bytes, AES.MODE_CBC, iv)
+    print(f"alcie {plaintext_ascii_bytes}")
+
+    assert message == plaintext_ascii_bytes
+
+    example = b'hello from space'
+    ciphered = alice_ciper.encrypt(example)
+
+    example2 = bob_cipher.decrypt(ciphered)
+
+    assert example == example2
+
+    print("plaintext string: ", plaintext_ascii_bytes)
+
+
 if __name__ == "__main__":
     main()
